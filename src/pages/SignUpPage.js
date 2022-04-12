@@ -6,7 +6,11 @@ import useHttp from "../hooks/useHttp";
 
 import Input from "../components/Input";
 
+import { useTranslation } from "react-i18next";
+
 const SignUpPage = () => {
+  const { t } = useTranslation();
+
   const [disableBtn, setDisableBtn] = useState(true);
   const [validError, setValidError] = useState();
   const [formValues, setFormValues] = useState({
@@ -52,7 +56,7 @@ const SignUpPage = () => {
 
   useEffect(() => {
     if (!error) return;
-    setValidError(error.response.data.validationErrors);
+    setValidError(error?.response?.data?.validationErrors);
   }, [error]);
 
   return (
@@ -64,13 +68,13 @@ const SignUpPage = () => {
           data-testid="form-sign-up"
         >
           <div className="card-header">
-            <h1 className="text-center">Sign Up</h1>
+            <h1 className="text-center">{t("signUp")}</h1>
           </div>
 
           <div className="card-body">
             <Input
               id="username"
-              title="Username"
+              title={t("username")}
               type="text"
               value={formValues?.name}
               onChange={onChange}
@@ -79,7 +83,7 @@ const SignUpPage = () => {
 
             <Input
               id="email"
-              title="E-mail"
+              title={t("email")}
               type="email"
               value={formValues?.email}
               onChange={onChange}
@@ -88,7 +92,7 @@ const SignUpPage = () => {
 
             <Input
               id="password"
-              title="Password"
+              title={t("password")}
               type="password"
               value={formValues?.password}
               onChange={onChange}
@@ -97,13 +101,13 @@ const SignUpPage = () => {
 
             <Input
               id="confirmPassword"
-              title=" Confirm Password"
+              title={t("passwordConfirm")}
               type="password"
               value={formValues?.confirmPassword}
               onChange={onChange}
               validMessage={
                 formValues?.password !== formValues?.confirmPassword &&
-                "Password mismatch"
+                t("passwordMismatchValidation")
               }
             />
 
@@ -119,7 +123,7 @@ const SignUpPage = () => {
                     aria-hidden="true"
                   />
                 )}
-                Sign Up
+                {t("signUp")}
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@ const Input = ({ title, value, onChange, validMessage, id, type }) => {
         {title}
       </label>
       <input
+        autoComplete="off"
         className={inputClass}
         id={id}
         type={type}

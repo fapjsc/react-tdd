@@ -1,0 +1,12 @@
+{
+  "signUp": "註冊",
+  "username": "帳號",
+  "email": "電子信箱",
+  "password": "密碼",
+  "passwordConfirm": "確認密碼",
+  "passwordMismatchValidation": "兩次密碼不一樣",
+  "users": "使用者",
+  "nextPage": "next >",
+  "previousPage": "< previous",
+  "login": "Login"
+}

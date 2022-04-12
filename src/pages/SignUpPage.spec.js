@@ -1,11 +1,47 @@
 import SignUpPage from "./SignUpPage";
-import { render, screen, waitFor } from "@testing-library/react";
+import LanguageSelector from "../components/LanguageSelector";
+
+import {
+  render,
+  screen,
+  waitFor,
+  act,
+  waitForElementToBeRemoved,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import { rest } from "msw";
+import i18n from "../locale/i18n";
+import { EN, TW } from "../locale/language";
+import { config } from "../config/config";
 
 const url = "/api/1.0/users";
 const signUpSuccessText = "Please check your email to activate your account";
+
+let reqBody;
+let counter = 0;
+let acceptLanguageHeader;
+
+const server = setupServer(
+  rest.post(url, (req, res, ctx) => {
+    reqBody = req.body;
+    counter += 1;
+    acceptLanguageHeader = req.headers.get("Accept-Language");
+    return res(
+      ctx.status(200),
+      ctx.json({ data: { message: "User created" } })
+    );
+  })
+);
+
+beforeEach(() => {
+  counter = 0;
+  server.resetHandlers();
+});
+
+beforeAll(() => server.listen());
+
+afterAll(() => server.close());
 
 const getElement = () => {
   render(<SignUpPage />);
@@ -93,30 +129,8 @@ describe("Sign Up Page", () => {
   // 交互測試
   describe("interactions", () => {
     let button;
-    let counter = 0;
-    let reqBody;
     let passwordInput;
     let confirmPasswordInput;
-
-    const server = setupServer(
-      rest.post("/api/1.0/users", (req, res, ctx) => {
-        reqBody = req.body;
-        counter += 1;
-        return res(
-          ctx.status(200),
-          ctx.json({ data: { message: "User created" } })
-        );
-      })
-    );
-
-    beforeEach(() => {
-      server.resetHandlers();
-      counter = 0;
-    });
-
-    beforeAll(() => server.listen());
-
-    afterAll(() => server.close());
 
     const setup = () => {
       render(<SignUpPage />);
@@ -133,7 +147,7 @@ describe("Sign Up Page", () => {
     };
 
     const generateValidError = (field, message) => {
-      return rest.post("/api/1.0/users", (req, res, ctx) =>
+      return rest.post(url, (req, res, ctx) =>
         res(
           ctx.status(400),
           ctx.json({
@@ -150,14 +164,12 @@ describe("Sign Up Page", () => {
     });
 
     // 發送api
-    it("點擊按鈕後發送註冊api請求 (/api/1.0/users)", async () => {
+    it(`點擊按鈕後發送註冊api請求 (${url})`, async () => {
       setup();
 
       userEvent.click(button);
 
-      await screen.findByText(
-        "Please check your email to activate your account"
-      );
+      await screen.findByText(signUpSuccessText);
 
       expect(reqBody).toEqual({
         email: "test@gmail.com",
@@ -173,9 +185,7 @@ describe("Sign Up Page", () => {
       userEvent.click(button);
       userEvent.click(button);
 
-      await screen.findByText(
-        "Please check your email to activate your account"
-      );
+      await screen.findByText(signUpSuccessText);
 
       expect(counter).toBe(1);
     });
@@ -193,23 +203,17 @@ describe("Sign Up Page", () => {
 
       expect(spinner).toBeInTheDocument();
 
-      await screen.findByText(
-        "Please check your email to activate your account"
-      );
+      await screen.findByText(signUpSuccessText);
     });
 
     it("成功註冊後，顯示帳號啟動通知", async () => {
       setup();
-      const init = screen.queryByText(
-        "Please check your email to activate your account"
-      );
+      const init = screen.queryByText(signUpSuccessText);
       expect(init).not.toBeInTheDocument();
 
       userEvent.click(button);
 
-      const text = await screen.findByText(
-        "Please check your email to activate your account"
-      );
+      const text = await screen.findByText(signUpSuccessText);
 
       expect(text).toBeInTheDocument();
     });
@@ -270,6 +274,120 @@ describe("Sign Up Page", () => {
       userEvent.type(confirmPasswordInput, "5678TestPassword");
       const validError = screen.queryByText("Password mismatch");
       expect(validError).toBeInTheDocument();
+    });
+  });
+
+  // 國際化
+  describe("i18n", () => {
+    let enToggle,
+      twToggle,
+      header,
+      button,
+      userInput,
+      emailInput,
+      passwordInput,
+      confirmPasswordInput;
+
+    const setup = ({ lan }) => {
+      render(
+        <>
+          <SignUpPage />
+          <LanguageSelector />
+        </>
+      );
+      enToggle = screen.getByTitle("English");
+      twToggle = screen.getByTitle("繁體中文");
+
+      if (lan === TW) {
+        userEvent.click(twToggle);
+      }
+
+      if (lan === EN) {
+        userEvent.click(enToggle);
+      }
+
+      header = screen.getByRole("heading", { name: lan.signUp });
+      button = screen.getByRole("button", { name: lan.signUp });
+      userInput = screen.getByLabelText(lan.username);
+      emailInput = screen.getByLabelText(lan.email);
+      passwordInput = screen.getByLabelText(lan.password);
+      confirmPasswordInput = screen.getByLabelText(lan.passwordConfirm);
+    };
+
+    const typeInput = () => {
+      userEvent.type(userInput, "test");
+      userEvent.type(emailInput, "test@gmail.com");
+      userEvent.type(passwordInput, "1234TestPassword");
+      userEvent.type(confirmPasswordInput, "1234TestPassword");
+    };
+
+    // beforeEach(() => {
+    //   i18n.changeLanguage(config.defaultLanguage);
+    // });
+
+    afterEach(() => {
+      act(() => {
+        i18n.changeLanguage(config.defaultLanguage);
+      });
+    });
+
+    it("預設英文", () => {
+      render(<SignUpPage />);
+      expect(
+        screen.getByRole("heading", { name: EN.signUp })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: EN.signUp })
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText(EN.username)).toBeInTheDocument();
+      expect(screen.getByLabelText(EN.email)).toBeInTheDocument();
+      expect(screen.getByLabelText(EN.password)).toBeInTheDocument();
+      expect(screen.getByLabelText(EN.passwordConfirm)).toBeInTheDocument();
+    });
+
+    it("切換語系到繁體中文", () => {
+      setup({ lan: TW });
+      expect(header).toBeInTheDocument();
+      expect(button).toBeInTheDocument();
+      expect(userInput).toBeInTheDocument();
+      expect(emailInput).toBeInTheDocument();
+      expect(passwordInput).toBeInTheDocument();
+      expect(confirmPasswordInput).toBeInTheDocument();
+    });
+
+    it("切換語系到英文", () => {
+      setup({ lan: EN });
+      expect(header).toBeInTheDocument();
+      expect(button).toBeInTheDocument();
+      expect(userInput).toBeInTheDocument();
+      expect(emailInput).toBeInTheDocument();
+      expect(passwordInput).toBeInTheDocument();
+      expect(confirmPasswordInput).toBeInTheDocument();
+    });
+
+    it("密碼輸入不一樣時，中文錯誤訊息", () => {
+      setup({ lan: TW });
+      userEvent.type(passwordInput, "21234");
+      const validErrors = screen.getByText(TW.passwordMismatchValidation);
+      expect(validErrors).toBeInTheDocument();
+    });
+
+    it("語言是英文時，請求頭須包含 Accept-Language: en", async () => {
+      setup({ lan: EN });
+      typeInput();
+      const form = screen.queryByTestId("form-sign-up");
+      userEvent.click(button);
+      await waitForElementToBeRemoved(form);
+      expect(acceptLanguageHeader).toBe("en");
+    });
+
+    it("語言是中文時，請求頭須包含 Accept-Language: tw", async () => {
+      setup({ lan: TW });
+      typeInput();
+      const form = screen.queryByTestId("form-sign-up");
+      userEvent.click(button);
+      await waitForElementToBeRemoved(form);
+      expect(acceptLanguageHeader).toBe("tw");
     });
   });
 });
