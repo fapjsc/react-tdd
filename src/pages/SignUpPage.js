@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 
-import axios from "axios";
-
 import { userPost } from "../apis/user";
 
 import useHttp from "../hooks/useHttp";
 
+import Input from "../components/Input";
+
 const SignUpPage = () => {
   const [disableBtn, setDisableBtn] = useState(true);
+  const [validError, setValidError] = useState();
   const [formValues, setFormValues] = useState({
     username: "",
     email: "",
@@ -21,6 +22,11 @@ const SignUpPage = () => {
     setFormValues((prev) => ({
       ...prev,
       [target.id]: target.value,
+    }));
+
+    setValidError((prev) => ({
+      ...prev,
+      [target.id]: "",
     }));
   };
 
@@ -44,9 +50,14 @@ const SignUpPage = () => {
     }
   }, [formValues]);
 
+  useEffect(() => {
+    if (!error) return;
+    setValidError(error.response.data.validationErrors);
+  }, [error]);
+
   return (
     <div className="col-lg-6 offset-lg-3 col-md-8 offset-md-2">
-      {status !== "completed" && (
+      {!data && (
         <form
           onSubmit={onSubmit}
           className="card mt-5"
@@ -57,57 +68,45 @@ const SignUpPage = () => {
           </div>
 
           <div className="card-body">
-            <div className="mb-3">
-              <label className="form-label" htmlFor="username">
-                Username
-              </label>
-              <input
-                className="form-control"
-                id="username"
-                type="text"
-                value={formValues.name}
-                onChange={onChange}
-              />
-            </div>
+            <Input
+              id="username"
+              title="Username"
+              type="text"
+              value={formValues?.name}
+              onChange={onChange}
+              validMessage={validError?.username}
+            />
 
-            <div className="mb-3">
-              <label className="form-label" htmlFor="email">
-                E-mail
-              </label>
-              <input
-                className="form-control"
-                id="email"
-                type="email"
-                value={formValues.email}
-                onChange={onChange}
-              />
-            </div>
+            <Input
+              id="email"
+              title="E-mail"
+              type="email"
+              value={formValues?.email}
+              onChange={onChange}
+              validMessage={validError?.email}
+            />
 
-            <div className="mb-3">
-              <label className="form-label" htmlFor="password">
-                Password
-              </label>
-              <input
-                className="form-control"
-                id="password"
-                type="password"
-                value={formValues.password}
-                onChange={onChange}
-              />
-            </div>
+            <Input
+              id="password"
+              title="Password"
+              type="password"
+              value={formValues?.password}
+              onChange={onChange}
+              validMessage={validError?.password}
+            />
 
-            <div className="mb-3">
-              <label className="form-label" htmlFor="confirmPassword">
-                Confirm Password
-              </label>
-              <input
-                className="form-control"
-                id="confirmPassword"
-                type="password"
-                value={formValues.confirmPassword}
-                onChange={onChange}
-              />
-            </div>
+            <Input
+              id="confirmPassword"
+              title=" Confirm Password"
+              type="password"
+              value={formValues?.confirmPassword}
+              onChange={onChange}
+              validMessage={
+                formValues?.password !== formValues?.confirmPassword &&
+                "Password mismatch"
+              }
+            />
+
             <div className="text-center">
               <button
                 className="btn btn-primary"
@@ -127,7 +126,7 @@ const SignUpPage = () => {
         </form>
       )}
 
-      {status === "completed" && (
+      {data && (
         <div className="alert alert-success">
           Please check your email to activate your account
         </div>

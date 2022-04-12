@@ -44,7 +44,7 @@ const useHttp = (requestFunction, startWithPending = false) => {
       } catch (error) {
         dispatch({
           type: "ERROR",
-          errorMessage: error.message || "Something went wrong!",
+          errorMessage: error || "Something went wrong!",
         });
       }
     },

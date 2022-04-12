@@ -95,17 +95,24 @@ describe("Sign Up Page", () => {
     let button;
     let counter = 0;
     let reqBody;
+    let passwordInput;
+    let confirmPasswordInput;
 
     const server = setupServer(
       rest.post("/api/1.0/users", (req, res, ctx) => {
         reqBody = req.body;
         counter += 1;
-
-        return res(ctx.status(200));
+        return res(
+          ctx.status(200),
+          ctx.json({ data: { message: "User created" } })
+        );
       })
     );
 
-    beforeEach(() => (counter = 0));
+    beforeEach(() => {
+      server.resetHandlers();
+      counter = 0;
+    });
 
     beforeAll(() => server.listen());
 
@@ -115,14 +122,25 @@ describe("Sign Up Page", () => {
       render(<SignUpPage />);
       const usernameInput = screen.getByLabelText("Username");
       const emailInput = screen.getByLabelText("E-mail");
-      const passwordInput = screen.getByLabelText("Password");
-      const confirmPasswordInput = screen.getByLabelText("Confirm Password");
+      passwordInput = screen.getByLabelText("Password");
+      confirmPasswordInput = screen.getByLabelText("Confirm Password");
       button = screen.getByRole("button", { name: "Sign Up" });
 
       userEvent.type(usernameInput, "test");
       userEvent.type(emailInput, "test@gmail.com");
       userEvent.type(passwordInput, "1234TestPassword");
       userEvent.type(confirmPasswordInput, "1234TestPassword");
+    };
+
+    const generateValidError = (field, message) => {
+      return rest.post("/api/1.0/users", (req, res, ctx) =>
+        res(
+          ctx.status(400),
+          ctx.json({
+            validationErrors: { [field]: message },
+          })
+        )
+      );
     };
 
     // 兩次密碼一樣就enable button
@@ -204,6 +222,54 @@ describe("Sign Up Page", () => {
       await waitFor(() => {
         expect(form).not.toBeInTheDocument();
       });
+    });
+
+    it.each`
+      field         | message
+      ${"username"} | ${"Username cannot be null"}
+      ${"email"}    | ${"E-mail cannot be null"}
+      ${"password"} | ${"Password cannot be null"}
+    `("表單驗證訊息", async ({ field, message }) => {
+      server.use(generateValidError(field, message));
+      setup();
+      userEvent.click(button);
+      const validError = await screen.findByText(message);
+      expect(validError).toBeInTheDocument();
+    });
+
+    it.each`
+      field         | message                      | label
+      ${"username"} | ${"Username cannot be null"} | ${"Username"}
+      ${"email"}    | ${"E-mail cannot be null"}   | ${"E-mail"}
+      ${"password"} | ${"Password cannot be null"} | ${"Password"}
+    `(
+      "user輸入表單，隱藏表單驗證的錯誤訊息",
+      async ({ field, message, label }) => {
+        server.use(generateValidError(field, message));
+        setup();
+        userEvent.click(button);
+        const validError = await screen.findByText(message);
+        const input = screen.getByLabelText(label);
+        userEvent.type(input, "updated");
+        expect(validError).not.toBeInTheDocument();
+      }
+    );
+
+    it("hides spinner and enables button after response received", async () => {
+      server.use(generateValidError("username", "Username cannot be null"));
+      setup();
+      userEvent.click(button);
+      await screen.findByText("Username cannot be null");
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(button).toBeEnabled();
+    });
+
+    it("顯示密碼不一致的錯誤訊息", () => {
+      setup();
+      userEvent.type(passwordInput, "1234TestPassword");
+      userEvent.type(confirmPasswordInput, "5678TestPassword");
+      const validError = screen.queryByText("Password mismatch");
+      expect(validError).toBeInTheDocument();
     });
   });
 });
